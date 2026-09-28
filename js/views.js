@@ -3,6 +3,7 @@ import { store, exportBackup, importBackup, defaultState, uid, KEY } from './sto
 import * as D from './dates.js';
 import * as L from './logic.js';
 import { openWarmup } from './timer.js';
+import * as S from './sync.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const $ = (sel, root) => root.querySelector(sel);
@@ -430,12 +431,13 @@ export function renderMore(el) {
   const ships = L.logThisWeek(s, today, 'ship').length;
   const posts = L.logThisWeek(s, today, 'post').length;
   const last = s.settings.lastExport ? new Date(s.settings.lastExport) : null;
-  const stale = !last || (Date.now() - last) > 7 * 86400000;
+  const stale = !S.isSignedIn() && (!last || (Date.now() - last) > 7 * 86400000);
   const items = [
     ['#/track', 'Active track', trackSub],
     ['#/energy', 'Energy menu', 'High, medium and low energy tasks'],
     ['#/log', 'Shipping and posting log', `This week: ${ships} shipped, ${posts} posts`],
     ['#/defaults', 'Defaults', 'Locked until 20.12.26'],
+    ['#/sync', 'Cloud sync', esc(S.syncSummary())],
     ['#/backup', 'Backup', last ? `Last export ${D.fmt(D.toISO(last))} ${D.time24(last)}` : 'Never exported'],
   ];
 
@@ -713,6 +715,8 @@ export function renderDefaults(el) {
 export function renderBackup(el) {
   const s = store.state;
   const last = s.settings.lastExport ? new Date(s.settings.lastExport) : null;
+  let conflict = null;
+  try { conflict = JSON.parse(localStorage.getItem(S.BACKUP_KEY)); } catch { /* none */ }
 
   el.innerHTML = `
   ${backLink}
@@ -722,6 +726,7 @@ export function renderBackup(el) {
     <button class="btn primary big" id="export">Export JSON</button>
     <label class="btn big file-btn">Import JSON<input type="file" id="import" accept="application/json,.json"></label>
     <p class="muted small">Import replaces all data on this device with the file's content.</p>
+    ${conflict ? `<button class="btn ghost" id="conflict">Download the copy saved before the last sync overwrite (${D.fmt(D.toISO(new Date(conflict.savedAt)))})</button>` : ''}
   </div>
   <div class="card stack">
     <h2>Danger zone</h2>
@@ -729,6 +734,14 @@ export function renderBackup(el) {
   </div>`;
 
   $('#export', el).addEventListener('click', () => { exportBackup(); toast('Backup downloaded'); rerender(); });
+  $('#conflict', el)?.addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(conflict.data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'output-tracker-before-sync.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
   $('#import', el).addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
@@ -752,4 +765,85 @@ export function renderBackup(el) {
     applyTheme('dark');
     rerender();
   });
+}
+
+/* ---------- Cloud sync ---------- */
+
+export function renderSync(el) {
+  const st = S.syncState;
+  let body;
+
+  if (!S.isSignedIn()) {
+    body = `
+    <form id="auth" class="card stack">
+      <label class="field"><span>Email</span><input name="email" type="email" required autocomplete="username"></label>
+      <label class="field"><span>Password</span><input name="password" type="password" required minlength="6" autocomplete="current-password"></label>
+      <button class="btn primary big">Sign in</button>
+      <button class="btn big" type="button" id="signup">Create account</button>
+      <p class="muted small" id="auth-msg">${esc(st.message)}</p>
+    </form>
+    <p class="muted small">Use the same email and password on every device. Your data on this device stays here until you sign in.</p>`;
+  } else {
+    const choose = st.status === 'choose' ? banner('accent',
+      '<strong>This device and the cloud both have data.</strong> Which one should win? The other copy is kept as a backup.',
+      `<div class="stack" style="margin-top:10px">
+        <button class="btn primary" data-choose="cloud">Use cloud data (saved ${esc(S.pendingSavedAt())})</button>
+        <button class="btn" data-choose="local">Keep this device's data</button>
+      </div>`) : '';
+    body = `
+    ${choose}
+    <div class="card stack">
+      <p>Signed in as <strong>${esc(S.signedInEmail() || 'you')}</strong></p>
+      <p class="muted">${esc(S.syncSummary())}</p>
+      <button class="btn primary big" id="sync-now" ${st.status === 'syncing' || st.status === 'choose' ? 'disabled' : ''}>Sync now</button>
+      <button class="btn ghost" id="sign-out">Sign out on this device</button>
+    </div>
+    <p class="muted small">Changes upload a few seconds after you make them and when you leave the app. Other devices pick them up when opened. Offline edits wait and upload later.</p>`;
+  }
+
+  el.innerHTML = `
+  ${backLink}
+  ${pageHead('Cloud sync', 'Keeps phone and desktop in step. The app still works offline.')}
+  ${body}`;
+
+  const form = $('#auth', el);
+  if (form) {
+    const msg = $('#auth-msg', el);
+    const run = async (fn, busyText) => {
+      if (!form.reportValidity()) return;
+      const buttons = $$('button', form);
+      buttons.forEach(b => { b.disabled = true; });
+      msg.textContent = busyText;
+      try {
+        await fn(form.elements.email.value.trim(), form.elements.password.value);
+      } catch (e) {
+        msg.textContent = e.message;
+        buttons.forEach(b => { b.disabled = false; });
+      }
+    };
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      run(async (email, pw) => { await S.signIn(email, pw); toast('Signed in'); rerender(); }, 'Signing in');
+    });
+    $('#signup', el).addEventListener('click', () => run(async (email, pw) => {
+      const result = await S.signUp(email, pw);
+      if (result === 'confirm') {
+        msg.textContent = 'Check your email and open the confirmation link. Then sign in here with your password.';
+        $$('button', form).forEach(b => { b.disabled = false; });
+      } else {
+        toast('Account created');
+        rerender();
+      }
+    }, 'Creating account'));
+  }
+  $('#sync-now', el)?.addEventListener('click', () => S.syncNow());
+  $('#sign-out', el)?.addEventListener('click', () => {
+    if (!confirm('Sign out on this device? Your data stays here, it just stops syncing.')) return;
+    S.signOut();
+    rerender();
+  });
+  $$('[data-choose]', el).forEach(b => b.addEventListener('click', () => {
+    S.resolveChoice(b.dataset.choose === 'cloud');
+    rerender();
+  }));
 }

@@ -110,6 +110,7 @@ main.wide { max-width: 1120px; }
   transition: transform 0.08s ease, background 0.15s ease;
 }
 .btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.5; cursor: default; }
 .btn.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 .btn.ghost { background: transparent; }
 .btn.big { min-height: 56px; width: 100%; font-size: 1.05rem; }
@@ -134,7 +135,7 @@ main.wide { max-width: 1120px; }
 .field { display: flex; flex-direction: column; gap: 6px; border: 0; margin: 0; padding: 0; min-width: 0; }
 .field > span, .field > legend { font-size: 0.85rem; font-weight: 650; color: var(--muted); padding: 0; margin-bottom: 6px; }
 fieldset.field { gap: 8px; }
-input[type="text"], input:not([type]), textarea {
+input[type="text"], input[type="email"], input[type="password"], input:not([type]), textarea {
   width: 100%;
   background: var(--bg-2);
   border: 1px solid var(--line);

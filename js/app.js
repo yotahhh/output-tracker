@@ -3,6 +3,7 @@ import { store } from './store.js';
 import * as D from './dates.js';
 import * as V from './views.js';
 import { resumeWarmup } from './timer.js';
+import { initSync } from './sync.js';
 
 const routes = {
   today: V.renderToday,
@@ -15,8 +16,9 @@ const routes = {
   log: V.renderLog,
   defaults: V.renderDefaults,
   backup: V.renderBackup,
+  sync: V.renderSync,
 };
-const underMore = ['more', 'energy', 'track', 'log', 'defaults', 'backup'];
+const underMore = ['more', 'energy', 'track', 'log', 'defaults', 'backup', 'sync'];
 
 const view = document.getElementById('view');
 let lastDay = D.todayISO();
@@ -42,6 +44,12 @@ function render() {
 }
 
 window.addEventListener('app:render', render);
+window.addEventListener('app:toast', e => V.toast(e.detail));
+// Sync status only shows on More and Cloud sync, so only those redraw, and never mid-typing.
+window.addEventListener('sync:status', () => {
+  const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+  if (!typing && ['more', 'sync'].includes(currentRoute())) render();
+});
 window.addEventListener('hashchange', () => {
   render();
   window.scrollTo(0, 0);
@@ -61,6 +69,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 V.applyTheme(store.state.settings.theme);
+initSync();
 render();
 resumeWarmup();
 

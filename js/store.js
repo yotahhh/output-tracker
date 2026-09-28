@@ -72,12 +72,14 @@ function load() {
 
 export const store = {
   state: load(),
+  onSave: null, // set by sync.js
   save() {
     try {
       localStorage.setItem(KEY, JSON.stringify(this.state));
     } catch {
       alert('Saving failed. Storage may be full or blocked. Export a backup now.');
     }
+    this.onSave?.();
   },
   replace(next) {
     this.state = migrate(next);
