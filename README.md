@@ -2,7 +2,7 @@
 
 A personal habit and creative-output tracker for a 12-week "output over polish" framework, running from Mon 28.09.26 to Sun 20.12.26.
 
-Live: https://yotahhh.github.io/output-tracker/
+Live: https://yvesspiri.net/output-tracker/
 
 It's plain HTML, CSS and JavaScript, with no build step and no server. It works offline and can be added to your home screen.
 
