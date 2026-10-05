@@ -1,8 +1,8 @@
 // Date helpers. Internal dates are ISO strings (YYYY-MM-DD), display is always DD.MM.YY.
 
-export const START = '2026-09-28';
-export const END = '2026-12-20';
-export const TOTAL_DAYS = 84;
+// Tracking starts on the Monday of KW 41. History always runs at least to the week of GOAL_END.
+export const START = '2026-10-05';
+export const GOAL_END = '2026-12-20';
 
 // The day rolls over at 04:00, so a late session after midnight still counts for the evening before.
 export const ROLLOVER_HOUR = 4;
@@ -69,9 +69,24 @@ export const weekStart = s => addDays(s, -dow(s));
 export const weekEnd = s => addDays(weekStart(s), 6);
 export const weekDays = s => Array.from({ length: 7 }, (_, i) => addDays(weekStart(s), i));
 
-// 0 to 83 inside the program, negative before, 84+ after.
-export const dayIndex = s => diffDays(START, s);
-// 1 to 12 inside the program.
-export const weekNumber = s => Math.floor(dayIndex(s) / 7) + 1;
-export const inProgram = s => dayIndex(s) >= 0 && dayIndex(s) < TOTAL_DAYS;
-export const programDays = () => Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(START, i));
+// ISO 8601 calendar week (KW): weeks start on Monday, KW 1 holds the year's first Thursday.
+export function isoWeek(s) {
+  const thursday = parseISO(addDays(s, 3 - dow(s)));
+  const jan1 = new Date(thursday.getFullYear(), 0, 1, 12);
+  return 1 + Math.floor(Math.round((thursday - jan1) / 86400000) / 7);
+}
+
+// Days from START up to and including the given day.
+export function daysUntil(s) {
+  const out = [];
+  for (let d = START; d <= s; d = addDays(d, 1)) out.push(d);
+  return out;
+}
+
+// Mondays of every week shown in History.
+export function historyWeeks(today) {
+  const last = weekStart(today > GOAL_END ? today : GOAL_END);
+  const out = [];
+  for (let m = weekStart(START); m <= last; m = addDays(m, 7)) out.push(m);
+  return out;
+}

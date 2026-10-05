@@ -1,6 +1,6 @@
 # Output Tracker
 
-A simple daily tracker for a 12-week "output over polish" framework, running from Mon 28.09.26 to Sun 20.12.26.
+A simple daily tracker. Tracking starts on Mon 05.10.26 (KW 41), and weeks are ISO calendar weeks (KW, Monday to Sunday).
 
 Live: https://yvesspiri.net/output-tracker/
 
@@ -12,11 +12,11 @@ Five things a day, all on the Today screen:
 
 - **NoPo:** abstained today. The row shows how many days in a row.
 - **Exercise:** tap Jog, Row or Workout (one is enough).
-- **Ableton:** one session.
+- **Ableton / Piano:** one session of either. Tap Ableton, Piano or both.
 - **Night Pages**
 - **Homework for Life:** tick it, and write the one or two sentences in the field below.
 
-A day counts when all five are done. The chain follows one rule: never miss two days in a row. **History** shows all 84 days, coloured by how many of the five you hit. Tap a day to fix a tick you missed.
+A day counts when all five are done. The chain follows one rule: never miss two days in a row. **History** shows every calendar week from KW 41, at least through KW 51 (the week of 20.12.26), with each day coloured by how many of the five you hit. Tap a day to fix a tick you missed.
 
 The day rolls over at 04:00. Anything you do after midnight still counts for the evening before.
 
@@ -24,6 +24,7 @@ The day rolls over at 04:00. Anything you do after midnight still counts for the
 
 All data lives in your browser's localStorage under the key `outputTracker.v1`. Unless you turn on cloud sync, nothing is sent anywhere. Each browser and device has its own copy, and clearing site data erases it.
 
+- **One-time reset:** `DATA_EPOCH` in `js/store.js` wipes tracked data once on every device when bumped, and keeps the cloud sync login. The wiped data stays downloadable under More > Backup.
 - **Export:** More > Backup > Export JSON downloads a file like `output-tracker-04.10.26.json`. Do this weekly. More shows a reminder after 7 days without an export.
 - **Import:** More > Backup > Import JSON, then pick a backup file. This **replaces** all data on that device.
 - **Moving between desktop and phone:** export on one device, send the file to the other (AirDrop, mail, cloud drive), then import it there. There's no automatic sync, so treat one device as the main one, or export and import each time you switch.

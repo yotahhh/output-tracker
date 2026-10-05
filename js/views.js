@@ -32,16 +32,16 @@ const banner = (kind, text, extra = '') => `<div class="banner ${kind}"><p>${tex
 const pageHead = (title, sub = '') => `<header class="page-head"><h1>${title}</h1>${sub ? `<p class="muted">${sub}</p>` : ''}</header>`;
 const backLink = '<a class="back" href="#/more"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>More</a>';
 
-// The five daily rows. Exercise is done by tapping one or more of its chips; the rest are checkboxes.
+// The five daily rows. Chip rows are done by tapping one or more chips; the rest are checkboxes.
 function taskRows(day, hints = {}) {
   return L.TASKS.map(t => {
     const hint = hints[t.key] || t.hint;
-    if (t.key === 'exercise') {
-      const done = L.isDone(day, 'exercise');
-      return `<li><div class="check${done ? ' on' : ''}" role="group" aria-label="Exercise">
+    if (t.chips) {
+      const on = day[t.key] || [];
+      return `<li><div class="check${L.isDone(day, t.key) ? ' on' : ''}" role="group" aria-label="${t.label}">
         <span class="box" aria-hidden="true"></span>
         <span class="check-text"><span class="check-label">${t.label}</span>
-          <span class="chips">${L.EXERCISES.map(x => `<button type="button" class="chip small" data-ex="${x.key}" aria-pressed="${(day.exercise || []).includes(x.key)}">${x.label}</button>`).join('')}</span>
+          <span class="chips">${t.chips.map(x => `<button type="button" class="chip small" data-task="${t.key}" data-chip="${x.key}" aria-pressed="${on.includes(x.key)}">${x.label}</button>`).join('')}</span>
         </span>
       </div></li>`;
     }
@@ -60,11 +60,11 @@ function bindTaskRows(el, s, iso, after) {
     rerender();
     after?.(cb.checked);
   }));
-  $$('.checks [data-ex]', el).forEach(b => b.addEventListener('click', () => {
+  $$('.checks [data-chip]', el).forEach(b => b.addEventListener('click', () => {
     const d = L.ensureDay(s, iso);
-    const k = b.dataset.ex;
-    const on = !d.exercise.includes(k);
-    d.exercise = on ? [...d.exercise, k] : d.exercise.filter(x => x !== k);
+    const { task, chip } = b.dataset;
+    const on = !d[task].includes(chip);
+    d[task] = on ? [...d[task], chip] : d[task].filter(x => x !== chip);
     save();
     rerender();
     after?.(on);
@@ -77,27 +77,24 @@ export function renderToday(el) {
   const s = store.state;
   const today = D.todayISO();
   const day = L.getDay(s, today);
-  const idx = D.dayIndex(today);
   const st = L.streakInfo(s, today);
   const run = L.nopoRun(s, today);
   const alerts = [];
 
-  if (idx < 0) alerts.push(banner('info', `The 12 weeks start on ${D.fmtLong(D.START)}.`));
-  if (idx >= D.TOTAL_DAYS) alerts.push(banner('info', 'The 12 weeks are done. Well held.'));
-  if (!st.todayDone && st.broken && idx > 1) {
+  if (today < D.START) alerts.push(banner('info', `Tracking starts on ${D.fmtLong(D.START)}.`));
+  if (!st.todayDone && st.broken) {
     alerts.push(banner('warn', 'Two days missed. No drama, start a fresh chain today.'));
   } else if (!st.todayDone && st.yesterdayMissed) {
     alerts.push(banner('accent', '<strong>Yesterday was missed.</strong> Today keeps the chain alive.'));
   }
 
-  const weekLabel = D.inProgram(today) ? `W${D.weekNumber(today)} of 12` : 'Outside the 12 weeks';
   const nopoHint = run ? `${run} ${run === 1 ? 'day' : 'days'} in a row` : 'Abstained today';
 
   el.innerHTML = `
   <section class="stack">
     <header class="day-head">
       <div>
-        <p class="eyebrow">${weekLabel}</p>
+        <p class="eyebrow">KW ${D.isoWeek(today)}</p>
         <h1>${D.fmtLong(today)}</h1>
       </div>
       <div class="streak${st.todayDone ? ' lit' : ''}" title="Best chain: ${st.best}">
@@ -124,18 +121,20 @@ let historySel = null;
 export function renderHistory(el) {
   const s = store.state;
   const today = D.todayISO();
-  const sel = historySel && D.inProgram(historySel) ? historySel : (D.inProgram(today) ? today : D.START);
+  const weeks = D.historyWeeks(today);
+  const shown = d => d >= weeks[0] && d <= D.addDays(weeks[weeks.length - 1], 6);
+  const sel = historySel && shown(historySel) ? historySel : (shown(today) ? today : D.START);
   const st = L.streakInfo(s, today);
-  const past = D.programDays().filter(d => d <= today);
+  const past = D.daysUntil(today);
   const complete = past.filter(d => L.isComplete(s, d)).length;
   const nopoDays = past.filter(d => L.getDay(s, d).nopo).length;
   const N = L.TASKS.length;
 
   let grid = `<div></div>${D.DAY_SHORT.map(n => `<div class="cal-h">${n}</div>`).join('')}`;
-  for (let w = 0; w < 12; w++) {
-    grid += `<div class="cal-w">W${w + 1}</div>`;
+  for (const monday of weeks) {
+    grid += `<div class="cal-w">KW ${D.isoWeek(monday)}</div>`;
     for (let i = 0; i < 7; i++) {
-      const d = D.addDays(D.START, w * 7 + i);
+      const d = D.addDays(monday, i);
       const n = L.hits(s, d);
       const cls = `cal-day lv${n}${d > today ? ' future' : ''}${d === today ? ' today' : ''}${d === sel ? ' sel' : ''}`;
       grid += `<button class="${cls}" data-date="${d}" aria-pressed="${d === sel}" aria-label="${D.fmtLong(d)}, ${n} of ${N} done">${+d.slice(8)}</button>`;
@@ -143,14 +142,14 @@ export function renderHistory(el) {
   }
 
   const sd = L.getDay(s, sel);
-  const detailBody = sel > today ? '<p class="muted">Still ahead.</p>' : `
+  const detailBody = sel > today ? '<p class="muted">Still ahead.</p>' : sel < D.START ? '<p class="muted">Before tracking started.</p>' : `
     <ul class="checks compact">${taskRows(sd)}</ul>
     ${sd.hflText ? `<div><p class="eyebrow">Homework for Life</p><p>${esc(sd.hflText)}</p></div>` : ''}
     <p class="muted small">Forgot to tick something? Fix it here.</p>`;
 
   el.innerHTML = `
   ${pageHead('History', `${complete} of ${past.length} days complete · chain ${st.current} · best ${st.best} · NoPo ${nopoDays} of ${past.length}`)}
-  <div class="cal" role="group" aria-label="84 days">${grid}</div>
+  <div class="cal" role="group" aria-label="Calendar weeks">${grid}</div>
   <ul class="legend">
     ${Array.from({ length: N + 1 }, (_, n) => `<li><i class="sw lv${n}"></i>${n === N ? `All ${N}` : n}</li>`).join('')}
   </ul>
@@ -210,7 +209,7 @@ export function renderBackup(el) {
     <button class="btn primary big" id="export">Export JSON</button>
     <label class="btn big file-btn">Import JSON<input type="file" id="import" accept="application/json,.json"></label>
     <p class="muted small">Import replaces all data on this device with the file's content.</p>
-    ${conflict ? `<button class="btn ghost" id="conflict">Download the copy saved before the last sync overwrite (${D.fmt(D.toISO(new Date(conflict.savedAt)))})</button>` : ''}
+    ${conflict ? `<button class="btn ghost" id="conflict">Download the copy saved before the last reset or sync overwrite (${D.fmt(D.toISO(new Date(conflict.savedAt)))})</button>` : ''}
   </div>
   <div class="card stack">
     <h2>Danger zone</h2>

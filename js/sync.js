@@ -1,12 +1,12 @@
 // Cloud sync with Supabase over its REST API, no SDK needed.
 // localStorage stays the working copy so the app keeps running offline; the cloud holds one JSON row per user.
-import { store, migrate } from './store.js';
+import { store, migrate, BACKUP_KEY } from './store.js';
 import * as D from './dates.js';
 
 const BASE = 'https://xmdhqcyalehbwsolfdgz.supabase.co';
 const API_KEY = 'sb_publishable_aFzK-zJmEXfZ9DxfdR__zw_11f7wzn0';
 const META_KEY = 'outputTracker.sync';
-export const BACKUP_KEY = 'outputTracker.conflictBackup';
+export { BACKUP_KEY };
 const PUSH_DELAY = 2500;
 
 let meta = readMeta();
@@ -201,7 +201,7 @@ function backupLocal() {
 
 function applyRemote(remote) {
   const local = store.state;
-  const next = migrate(remote.data);
+  const next = migrate(remote.data, { resetOld: true });
   next.settings.theme = local.settings.theme; // theme stays per device
   applying = true;
   store.state = next;
@@ -305,6 +305,13 @@ function flush() {
 
 export function initSync() {
   store.onSave = onLocalSave;
+  if (store.wipedOnLoad) {
+    // Push the reset to the cloud so other devices start clean too. It counts as the oldest possible
+    // change, so if another device already reset and logged new days, those win instead.
+    meta.dirty = true;
+    meta.changedAt = 0;
+    writeMeta();
+  }
   handleRedirect().finally(() => syncNow());
   window.addEventListener('online', () => syncNow());
   document.addEventListener('visibilitychange', () => {

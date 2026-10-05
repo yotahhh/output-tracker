@@ -2,18 +2,23 @@
 
 export const KEY = 'outputTracker.v1';
 export const VERSION = 1;
+// Bumping DATA_EPOCH wipes the tracked data once on every device. The sync login lives in its own key and is kept.
+export const DATA_EPOCH = 2;
+export const BACKUP_KEY = 'outputTracker.conflictBackup';
 
 export function defaultState() {
   return {
     version: VERSION,
+    epoch: DATA_EPOCH,
     settings: { theme: 'dark', lastExport: null },
     days: {},
   };
 }
 
 // Brings any stored or imported object up to the current version.
-// Fields from the earlier, bigger version of the app (tracks, reviews, logs) are kept untouched.
-export function migrate(data) {
+// With resetOld, data from before the last reset comes back empty (settings such as the theme survive).
+// Imports skip that, so an older backup can still be restored on purpose.
+export function migrate(data, { resetOld = false } = {}) {
   if (!data || typeof data !== 'object' || typeof data.version !== 'number') {
     throw new Error('This file does not look like an Output Tracker backup.');
   }
@@ -21,27 +26,45 @@ export function migrate(data) {
     throw new Error('This backup comes from a newer version of the app.');
   }
   const base = defaultState();
+  if (resetOld && (data.epoch || 1) < DATA_EPOCH) {
+    return { ...base, settings: { ...base.settings, ...(data.settings || {}) } };
+  }
   return {
     ...base,
     ...data,
     version: VERSION,
+    epoch: DATA_EPOCH,
     settings: { ...base.settings, ...(data.settings || {}) },
     days: data.days || {},
   };
 }
 
+let wipedOnLoad = false;
+
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return migrate(JSON.parse(raw));
+    if (!raw) return defaultState();
+    const data = JSON.parse(raw);
+    const out = migrate(data, { resetOld: true });
+    if ((data.epoch || 1) < DATA_EPOCH) {
+      // One-time reset: keep the old data as a downloadable backup, then start clean.
+      localStorage.setItem(BACKUP_KEY, JSON.stringify({ savedAt: new Date().toISOString(), data }));
+      localStorage.setItem(KEY, JSON.stringify(out));
+      wipedOnLoad = true;
+    }
+    return out;
   } catch (e) {
     console.warn('Could not load saved data, starting fresh.', e);
   }
   return defaultState();
 }
 
+const initial = load();
+
 export const store = {
-  state: load(),
+  state: initial,
+  wipedOnLoad, // sync.js uploads the clean state when this is true
   onSave: null, // set by sync.js
   save() {
     try {

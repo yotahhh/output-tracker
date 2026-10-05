@@ -3,28 +3,28 @@ import * as D from './dates.js';
 
 export const TASKS = [
   { key: 'nopo', label: 'NoPo', hint: 'Abstained today' },
-  { key: 'exercise', label: 'Exercise', hint: 'Jog, row or workout' },
-  { key: 'ableton', label: 'Ableton', hint: 'One session' },
+  {
+    key: 'exercise', label: 'Exercise',
+    chips: [{ key: 'jog', label: 'Jog' }, { key: 'row', label: 'Row' }, { key: 'workout', label: 'Workout' }],
+  },
+  { key: 'music', label: 'Ableton / Piano', chips: [{ key: 'ableton', label: 'Ableton' }, { key: 'piano', label: 'Piano' }] },
   { key: 'pages', label: 'Night Pages', hint: 'Journal' },
   { key: 'hfl', label: 'Homework for Life', hint: '1 to 2 sentences' },
 ];
 
-export const EXERCISES = [
-  { key: 'jog', label: 'Jog' },
-  { key: 'row', label: 'Row' },
-  { key: 'workout', label: 'Workout' },
-];
+// Rows with chips are done when at least one chip is on; the rest are plain checkboxes.
+const CHIP_KEYS = TASKS.filter(t => t.chips).map(t => t.key);
 
 export const getDay = (state, s) => state.days[s] || {};
 
 export function ensureDay(state, s) {
   const d = (state.days[s] ||= {});
-  d.exercise = Array.isArray(d.exercise) ? d.exercise : [];
+  for (const k of CHIP_KEYS) d[k] = Array.isArray(d[k]) ? d[k] : [];
   d.hflText ??= '';
   return d;
 }
 
-export const isDone = (day, key) => (key === 'exercise' ? Array.isArray(day.exercise) && day.exercise.length > 0 : !!day[key]);
+export const isDone = (day, key) => (CHIP_KEYS.includes(key) ? Array.isArray(day[key]) && day[key].length > 0 : !!day[key]);
 export const hits = (state, s) => TASKS.filter(t => isDone(getDay(state, s), t.key)).length;
 export const isComplete = (state, s) => hits(state, s) === TASKS.length;
 
@@ -32,9 +32,7 @@ export const isComplete = (state, s) => hits(state, s) === TASKS.length;
 // One missed day keeps the chain, a second miss in a row resets it. Today only counts once done.
 export function streakInfo(state, today) {
   let current = 0, best = 0, misses = 0;
-  for (let i = 0; i < D.TOTAL_DAYS; i++) {
-    const d = D.addDays(D.START, i);
-    if (d > today) break;
+  for (const d of D.daysUntil(today)) {
     if (isComplete(state, d)) {
       current++;
       misses = 0;
@@ -44,7 +42,7 @@ export function streakInfo(state, today) {
       if (misses >= 2) current = 0;
     }
   }
-  const missed = s => D.dayIndex(s) >= 0 && !isComplete(state, s);
+  const missed = s => s >= D.START && !isComplete(state, s);
   const y = D.addDays(today, -1);
   return {
     current,
@@ -59,7 +57,7 @@ export function streakInfo(state, today) {
 export function nopoRun(state, today) {
   let d = getDay(state, today).nopo ? today : D.addDays(today, -1);
   let n = 0;
-  while (getDay(state, d).nopo) {
+  while (d >= D.START && getDay(state, d).nopo) {
     n++;
     d = D.addDays(d, -1);
   }

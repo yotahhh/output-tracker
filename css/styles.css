@@ -309,9 +309,9 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 .legend li { display: flex; align-items: center; gap: 6px; }
 
 /* History calendar */
-.cal { display: grid; grid-template-columns: 34px repeat(7, 1fr); gap: 5px; align-items: center; }
+.cal { display: grid; grid-template-columns: 44px repeat(7, 1fr); gap: 5px; align-items: center; }
 .cal-h { text-align: center; font-size: 0.72rem; color: var(--muted); font-weight: 650; }
-.cal-w { font-size: 0.7rem; color: var(--muted); font-weight: 650; }
+.cal-w { white-space: nowrap; font-size: 0.7rem; color: var(--muted); font-weight: 650; }
 .cal-day {
   aspect-ratio: 1;
   min-height: 38px;
