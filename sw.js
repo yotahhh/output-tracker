@@ -1,5 +1,5 @@
 // Offline support: precache the app shell, serve from cache, refresh the cache in the background.
-const CACHE = 'output-tracker-v4';
+const CACHE = 'output-tracker-v5';
 const ASSETS = [
   './',
   './index.html',

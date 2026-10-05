@@ -181,12 +181,18 @@ const payload = () => store.state;
 async function push({ keepalive = false } = {}) {
   const changedBefore = meta.changedAt;
   const body = JSON.stringify({ ...(meta.session.user_id ? { user_id: meta.session.user_id } : {}), data: payload() });
-  const rows = await rest('state?on_conflict=user_id', {
+  const upload = () => rest('state?on_conflict=user_id', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
     body,
     keepalive: keepalive && body.length < 60000,
   });
+  let rows = await upload();
+  // After a reset, upload twice: the cloud keeps the previous version in "prev", which must not be the old data.
+  if (meta.wipePending) {
+    rows = await upload();
+    meta.wipePending = false;
+  }
   meta.syncedAt = rows[0].updated_at;
   // Edits made while the upload was in flight stay pending for the next round.
   if (meta.changedAt === changedBefore) meta.dirty = false;
@@ -241,7 +247,7 @@ export function syncNow() {
         if (meta.dirty && (meta.changedAt || 0) > Date.parse(remote.updated_at)) {
           await push();
         } else {
-          if (meta.dirty) backupLocal();
+          if (meta.dirty && !isEmpty(store.state)) backupLocal();
           applyRemote(remote);
           say('Updated from the cloud');
         }
@@ -310,6 +316,7 @@ export function initSync() {
     // change, so if another device already reset and logged new days, those win instead.
     meta.dirty = true;
     meta.changedAt = 0;
+    meta.wipePending = true;
     writeMeta();
   }
   handleRedirect().finally(() => syncNow());

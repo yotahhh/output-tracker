@@ -209,7 +209,7 @@ export function renderBackup(el) {
     <button class="btn primary big" id="export">Export JSON</button>
     <label class="btn big file-btn">Import JSON<input type="file" id="import" accept="application/json,.json"></label>
     <p class="muted small">Import replaces all data on this device with the file's content.</p>
-    ${conflict ? `<button class="btn ghost" id="conflict">Download the copy saved before the last reset or sync overwrite (${D.fmt(D.toISO(new Date(conflict.savedAt)))})</button>` : ''}
+    ${conflict ? `<button class="btn ghost" id="conflict">Download the copy saved before the last sync overwrite (${D.fmt(D.toISO(new Date(conflict.savedAt)))})</button>` : ''}
   </div>
   <div class="card stack">
     <h2>Danger zone</h2>

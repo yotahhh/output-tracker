@@ -2,8 +2,8 @@
 
 export const KEY = 'outputTracker.v1';
 export const VERSION = 1;
-// Bumping DATA_EPOCH wipes the tracked data once on every device. The sync login lives in its own key and is kept.
-export const DATA_EPOCH = 2;
+// Bumping DATA_EPOCH wipes all user data once on every device. Only the sync login (its own key) survives.
+export const DATA_EPOCH = 3;
 export const BACKUP_KEY = 'outputTracker.conflictBackup';
 
 export function defaultState() {
@@ -16,8 +16,8 @@ export function defaultState() {
 }
 
 // Brings any stored or imported object up to the current version.
-// With resetOld, data from before the last reset comes back empty (settings such as the theme survive).
-// Imports skip that, so an older backup can still be restored on purpose.
+// With resetOld, data from before the last reset comes back completely empty.
+// Imports skip that, so an older backup file can still be restored on purpose.
 export function migrate(data, { resetOld = false } = {}) {
   if (!data || typeof data !== 'object' || typeof data.version !== 'number') {
     throw new Error('This file does not look like an Output Tracker backup.');
@@ -26,9 +26,7 @@ export function migrate(data, { resetOld = false } = {}) {
     throw new Error('This backup comes from a newer version of the app.');
   }
   const base = defaultState();
-  if (resetOld && (data.epoch || 1) < DATA_EPOCH) {
-    return { ...base, settings: { ...base.settings, ...(data.settings || {}) } };
-  }
+  if (resetOld && (data.epoch || 1) < DATA_EPOCH) return base;
   return {
     ...base,
     ...data,
@@ -48,8 +46,8 @@ function load() {
     const data = JSON.parse(raw);
     const out = migrate(data, { resetOld: true });
     if ((data.epoch || 1) < DATA_EPOCH) {
-      // One-time reset: keep the old data as a downloadable backup, then start clean.
-      localStorage.setItem(BACKUP_KEY, JSON.stringify({ savedAt: new Date().toISOString(), data }));
+      // One-time reset: drop everything, including any local backup copy.
+      localStorage.removeItem(BACKUP_KEY);
       localStorage.setItem(KEY, JSON.stringify(out));
       wipedOnLoad = true;
     }
