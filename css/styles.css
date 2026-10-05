@@ -35,9 +35,12 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+/* Short pages still fill the screen. Without this, iOS home-screen apps leave a gap under the fixed tab bar. */
+html { -webkit-text-size-adjust: 100%; min-height: 100%; background: var(--bg); }
 body {
   margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
   font: 16px/1.45 var(--font);
