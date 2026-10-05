@@ -176,11 +176,7 @@ async function rest(path, opts = {}, retried = false) {
 
 const pull = async () => (await rest('state?select=data,updated_at'))[0] || null;
 
-// A running warm-up timer belongs to the device that started it.
-function payload() {
-  const { timer, ...data } = store.state;
-  return data;
-}
+const payload = () => store.state;
 
 async function push({ keepalive = false } = {}) {
   const changedBefore = meta.changedAt;
@@ -206,7 +202,6 @@ function backupLocal() {
 function applyRemote(remote) {
   const local = store.state;
   const next = migrate(remote.data);
-  next.timer = local.timer;
   next.settings.theme = local.settings.theme; // theme stays per device
   applying = true;
   store.state = next;
@@ -218,8 +213,7 @@ function applyRemote(remote) {
   window.dispatchEvent(new Event('app:render'));
 }
 
-const isEmpty = s => !Object.keys(s.days).length && !s.shipLog.length && !Object.keys(s.reviews).length
-  && !s.tracks.active && !s.tracks.finished.length;
+const isEmpty = s => !Object.keys(s.days).length;
 
 export function syncNow() {
   if (!meta.session) return Promise.resolve();

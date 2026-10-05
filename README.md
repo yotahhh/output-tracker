@@ -1,18 +1,22 @@
 # Output Tracker
 
-A personal habit and creative-output tracker for a 12-week "output over polish" framework, running from Mon 28.09.26 to Sun 20.12.26.
+A simple daily tracker for a 12-week "output over polish" framework, running from Mon 28.09.26 to Sun 20.12.26.
 
 Live: https://yvesspiri.net/output-tracker/
 
 It's plain HTML, CSS and JavaScript, with no build step and no server. It works offline and can be added to your home screen.
 
-## Views
+## What it tracks
 
-- **Today:** four floors (Night Pages, Piano, Ableton, Homework for Life), today's micro-task, the warm-up timer, the chain, and reminders (hard stop, posting day, Sunday)
-- **Timeline:** 12 weeks in an arrangement-view layout, with lanes for phase, tracks, shipped, posting and checkpoints
-- **Review:** the Sunday review form, with this week's Homework for Life entries and past reviews
-- **History:** all 84 days, coloured by how many floors were hit. Tap a day to fix a missed tick.
-- **More:** active track, energy menu, shipping and posting log, defaults, backup and theme
+Five things a day, all on the Today screen:
+
+- **NoPo:** abstained today. The row shows how many days in a row.
+- **Exercise:** tap Jog, Row or Workout (one is enough).
+- **Ableton:** one session.
+- **Night Pages**
+- **Homework for Life:** tick it, and write the one or two sentences in the field below.
+
+A day counts when all five are done. The chain follows one rule: never miss two days in a row. **History** shows all 84 days, coloured by how many of the five you hit. Tap a day to fix a tick you missed.
 
 The day rolls over at 04:00. Anything you do after midnight still counts for the evening before.
 
@@ -31,7 +35,7 @@ More > Cloud sync keeps phone and desktop in step through Supabase (free tier). 
 - The app still works fully offline. Changes upload a few seconds after you make them, and when you leave the app. Other devices pick them up when you open them.
 - **Conflicts:** if two devices changed data between syncs, the newer change wins. The losing copy isn't thrown away: this device's copy can be downloaded from More > Backup, and the cloud's previous version is kept in the `prev` column.
 - **First sign-in on a device that already has data:** the app asks whether to keep the cloud data or this device's data. It never merges silently.
-- A running warm-up timer and the light/dark theme stay per device.
+- The light/dark theme stays per device.
 - **Setup:** see `supabase.sql`. The publishable key in `js/sync.js` is meant to be public. Row level security makes sure each account can only read its own row.
 
 Export and import still work as a manual backup.

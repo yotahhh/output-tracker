@@ -1,5 +1,5 @@
 // Offline support: precache the app shell, serve from cache, refresh the cache in the background.
-const CACHE = 'output-tracker-v2';
+const CACHE = 'output-tracker-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,6 @@ const ASSETS = [
   './js/logic.js',
   './js/store.js',
   './js/sync.js',
-  './js/timer.js',
   './js/views.js',
   './manifest.webmanifest',
   './icons/icon-192.png',

@@ -8,38 +8,11 @@ export function defaultState() {
     version: VERSION,
     settings: { theme: 'dark', lastExport: null },
     days: {},
-    tracks: { active: null, finished: [] },
-    energy: {
-      high: [
-        'Arrange a full section of the active track',
-        'Write a new chord progression and loop it',
-        'Mix pass on the active track',
-      ],
-      medium: [
-        'Design 3 new sounds for the toolkit',
-        'Record 8 bars of piano into Ableton',
-        'Rough visual for the next post',
-      ],
-      low: [
-        'Name and colour all tracks in the project',
-        'Bounce a rough and listen once',
-        'Sort samples into the toolkit folder',
-      ],
-    },
-    shipLog: [],
-    reviews: {},
-    defaults: {
-      abletonTemplate: '',
-      toolkit: '',
-      sonicDirection: '',
-      visualFormat: '',
-      postingDays: [2, 5], // 0 = Mon, so Wed and Sat
-    },
-    timer: null,
   };
 }
 
 // Brings any stored or imported object up to the current version.
+// Fields from the earlier, bigger version of the app (tracks, reviews, logs) are kept untouched.
 export function migrate(data) {
   if (!data || typeof data !== 'object' || typeof data.version !== 'number') {
     throw new Error('This file does not look like an Output Tracker backup.');
@@ -47,17 +20,14 @@ export function migrate(data) {
   if (data.version > VERSION) {
     throw new Error('This backup comes from a newer version of the app.');
   }
-  // Later versions add their upgrade steps here, for example: if (data.version === 1) { ... }
   const base = defaultState();
-  const out = { ...base, ...data, version: VERSION };
-  for (const k of ['settings', 'tracks', 'energy', 'defaults']) {
-    out[k] = { ...base[k], ...(data[k] || {}) };
-  }
-  out.days = data.days || {};
-  out.reviews = data.reviews || {};
-  out.shipLog = Array.isArray(data.shipLog) ? data.shipLog : [];
-  out.tracks.finished = Array.isArray(out.tracks.finished) ? out.tracks.finished : [];
-  return out;
+  return {
+    ...base,
+    ...data,
+    version: VERSION,
+    settings: { ...base.settings, ...(data.settings || {}) },
+    days: data.days || {},
+  };
 }
 
 function load() {
